@@ -45,6 +45,27 @@
         </div>
     </div>
 
+    <!-- Overlay de chargement pendant la connexion -->
+    <div id="login-loading" class="login-loading hidden" aria-live="polite" aria-busy="false">
+        <div class="login-loading-card">
+            <div class="login-orbit" aria-hidden="true">
+                <span></span><span></span><span></span>
+                <div class="login-orbit-center"><i data-lucide="graduation-cap"></i></div>
+            </div>
+            <div class="login-loading-copy">
+                <span class="loading-eyebrow">Pronote+</span>
+                <h2 id="login-loading-title">Connexion en cours</h2>
+                <p id="login-loading-text">Vérification de tes informations…</p>
+            </div>
+            <div class="login-loading-bar" aria-hidden="true"><span id="login-loading-progress"></span></div>
+            <div class="login-loading-steps" aria-hidden="true">
+                <span class="loading-step active" data-step="1"></span>
+                <span class="loading-step" data-step="2"></span>
+                <span class="loading-step" data-step="3"></span>
+            </div>
+        </div>
+    </div>
+
     <!-- Application principale -->
     <div id="app-container" class="hidden">
         <!-- Sidebar -->
@@ -87,6 +108,7 @@
                     <div>
                         <h2>Bonjour, <span id="welcome-name" class="accent-gradient">Alexandre</span> 👋</h2>
                         <p class="date-text" id="current-date"></p>
+                        <div class="dashboard-status"><span class="status-dot"></span><span>Synchronisé avec Pronote+</span></div>
                     </div>
                     <div class="header-actions">
                         <button id="edit-dashboard-btn" class="btn-secondary"><i data-lucide="move"></i> <span>Personnaliser</span></button>
