@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pronote+ | Tableau de bord scolaire</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <script>
+      if (localStorage.getItem('pronote_theme') === 'light') document.body.classList.add('light-theme');
+    </script>
+
+    <!-- Page de connexion -->
+    <div id="login-page">
+        <div class="login-shell">
+            <div class="login-card animate-pop">
+                <div class="login-brand-mark"><i data-lucide="graduation-cap"></i></div>
+                <h1 class="logo-text">Pronote<span class="accent-gradient">+</span></h1>
+                <p class="subtitle">Espace sécurisé élève</p>
+                <form id="login-form">
+                    <div class="input-group">
+                        <i data-lucide="user"></i>
+                        <input type="text" id="username-input" placeholder="Identifiant" autocomplete="username" required>
+                    </div>
+                    <div class="input-group password-group">
+                        <i data-lucide="lock"></i>
+                        <input type="password" id="password-input" placeholder="Mot de passe" autocomplete="current-password" required>
+                        <button type="button" id="toggle-password" class="btn-eye" title="Afficher / Masquer le mot de passe" aria-label="Afficher ou masquer le mot de passe">
+                            <i data-lucide="eye"></i>
+                        </button>
+                    </div>
+                    <button type="submit" class="btn-primary login-submit">Se connecter</button>
+                    <button type="button" id="login-help-btn" class="login-help-link">
+                        <i data-lucide="circle-help"></i> Êtes-vous bloqué à la connexion ?
+                    </button>
+                    <p id="login-error" class="login-error" aria-live="polite"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application principale -->
+    <div id="app-container" class="hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2 class="logo-text"><i data-lucide="graduation-cap"></i> <span class="hide-mobile">Pronote<span class="accent-gradient">+</span></span></h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="accueil"><i data-lucide="layout-dashboard"></i> <span class="hide-mobile">Accueil</span></button>
+                <button class="nav-item" data-tab="timetable"><i data-lucide="calendar"></i> <span class="hide-mobile">Emploi du temps</span></button>
+                <button class="nav-item" data-tab="homework"><i data-lucide="book-open-check"></i> <span class="hide-mobile">Devoirs</span></button>
+                <button class="nav-item" data-tab="grades"><i data-lucide="bar-chart-3"></i> <span class="hide-mobile">Notes</span></button>
+                <button class="nav-item" data-tab="drive"><i data-lucide="hard-drive"></i> <span class="hide-mobile">Drive</span></button>
+                <button class="nav-item" data-tab="email"><i data-lucide="mail"></i> <span class="hide-mobile">Messagerie</span></button>
+                <button class="nav-item" data-tab="profile"><i data-lucide="user-circle"></i> <span class="hide-mobile">Profil</span></button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar" id="nav-avatar">AD</div>
+                    <div class="user-info">
+                        <span class="user-name" id="nav-name">Alexandre D.</span>
+                        <span class="user-class" id="nav-class">Terminale 1</span>
+                    </div>
+                </div>
+                <div class="footer-actions">
+                    <button id="theme-toggle" class="btn-icon" title="Changer de thème"><i data-lucide="sun-moon"></i></button>
+                    <button id="logout-btn" class="btn-icon" title="Se déconnecter"><i data-lucide="log-out"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Contenu -->
+        <main class="main-content">
+            
+            <!-- ACCUEIL -->
+            <section id="tab-accueil" class="tab-pane active">
+                <header class="page-header flex-between animate-item">
+                    <div>
+                        <h2>Bonjour, <span id="welcome-name" class="accent-gradient">Alexandre</span> 👋</h2>
+                        <p class="date-text" id="current-date"></p>
+                    </div>
+                    <div class="header-actions">
+                        <button id="edit-dashboard-btn" class="btn-secondary"><i data-lucide="move"></i> <span>Personnaliser</span></button>
+                        <button id="add-widget-btn" class="btn-primary hidden"><i data-lucide="plus"></i> <span>Ajouter un widget</span></button>
+                        <button id="restart-tour-btn" class="btn-secondary" title="Revoir le tutoriel"><i data-lucide="help-circle"></i></button>
+                    </div>
+                </header>
+                
+                <div class="dashboard-grid animate-item" id="main-grid">
+                    <!-- Widget Prochain cours -->
+                    <div class="widget" data-widget="next-class" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w" title="Déplacer"><i data-lucide="move"></i></button>
+                            <button class="resize-w" title="Changer taille (Normale / Grande / Petite)"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w" title="Masquer"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="zap"></i> Prochain cours</h3>
+                        <div id="next-class-content" class="widget-content"></div>
+                    </div>
+                    
+                    <!-- Widget Post-it -->
+                    <div class="widget postit-widget" data-widget="postit" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="sticky-note"></i> Post-it</h3>
+                        <textarea id="postit-text" placeholder="Notes rapides..."></textarea>
+                    </div>
+
+                    <!-- Widget Emploi du temps -->
+                    <div class="widget" data-widget="today-timetable" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="clock"></i> Emploi du temps</h3>
+                        <ul id="today-classes" class="class-list"></ul>
+                    </div>
+
+                    <!-- Widget Devoirs -->
+                    <div class="widget" data-widget="urgent-homework" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="book-open-check"></i> Devoirs</h3>
+                        <ul id="urgent-homework" class="homework-list"></ul>
+                    </div>
+
+                    <!-- Widget Notes -->
+                    <div class="widget" data-widget="recent-grades" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="award"></i> Notes</h3>
+                        <div id="recent-grades-content"></div>
+                    </div>
+
+                    <!-- Widget Messagerie -->
+                    <div class="widget" data-widget="messages-widget" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="mail"></i> Messagerie</h3>
+                        <div id="quick-messages-content"></div>
+                    </div>
+
+                    <!-- Widget Contenu du cours -->
+                    <div class="widget" data-widget="course-content-widget" draggable="true">
+                        <div class="widget-controls hidden">
+                            <button class="move-w"><i data-lucide="move"></i></button>
+                            <button class="resize-w"><i data-lucide="maximize-2"></i></button>
+                            <button class="remove-w"><i data-lucide="x"></i></button>
+                        </div>
+                        <h3><i data-lucide="file-text"></i> Contenu du cours</h3>
+                        <div id="widget-course-desc">
+                            <p style="color:var(--text-secondary); font-size:0.9rem;">Sélectionnez un cours dans l'emploi du temps pour voir les détails ici.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- EMPLOI DU TEMPS -->
+            <section id="tab-timetable" class="tab-pane hidden">
+                <header class="page-header flex-between animate-item">
+                    <h2>Emploi du temps complet</h2>
+                </header>
+                <div class="timetable-container animate-item">
+                    <div class="timetable-grid" id="timetable-grid"></div>
+                </div>
+            </section>
+
+            <!-- DEVOIRS -->
+            <section id="tab-homework" class="tab-pane hidden">
+                <header class="page-header animate-item">
+                    <h2>Travail à faire</h2>
+                </header>
+                <div class="homework-container animate-item" id="all-homework-list"></div>
+            </section>
+
+            <!-- NOTES -->
+            <section id="tab-grades" class="tab-pane hidden">
+                <header class="page-header animate-item">
+                    <h2>Résultats & Notes</h2>
+                </header>
+                <div class="grades-dashboard animate-item">
+                    <div class="grades-header-cards">
+                        <div class="card avg-card">
+                            <h3>Moyenne Générale</h3>
+                            <div class="huge-grade" id="overall-avg">--/20</div>
+                        </div>
+                        <div class="card chart-card">
+                            <h3>Simulateur de moyenne</h3>
+                            <div class="simulator-box" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+                                <div style="display:flex; gap:10px;">
+                                    <select id="sim-subject" class="modal-input" style="padding:6px;"></select>
+                                    <input type="number" id="sim-grade" placeholder="Note (/20)" min="0" max="20" step="0.5" class="modal-input" style="width:100px; padding:6px;">
+                                </div>
+                                <p id="sim-result" style="font-size:0.9rem; color:var(--accent-green); font-weight:600;"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="subjects-list" id="subjects-grades"></div>
+                </div>
+            </section>
+
+            <!-- DRIVE -->
+            <section id="tab-drive" class="tab-pane hidden">
+                <header class="page-header flex-between animate-item">
+                    <h2>Pronote Drive</h2>
+                    <button class="btn-primary" id="upload-file-btn"><i data-lucide="upload"></i> Ajouter un fichier</button>
+                    <input type="file" id="drive-file-input" hidden>
+                </header>
+                <div class="drive-layout animate-item" style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card">
+                        <h3><i data-lucide="folder-lock"></i> Espace personnel</h3>
+                        <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:10px;">Vos documents personnels sécurisés.</p>
+                        <ul id="personal-drive-list" class="docs-list"></ul>
+                    </div>
+                    <div class="card">
+                        <h3><i data-lucide="folder-git-2"></i> Fichiers par matière</h3>
+                        <div id="subject-drive-list" style="margin-top:15px; display:flex; flex-direction:column; gap:15px;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MESSAGERIE EMAIL -->
+            <section id="tab-email" class="tab-pane hidden">
+                <header class="page-header flex-between animate-item">
+                    <h2>Messagerie</h2>
+                    <button class="btn-primary" id="new-email-btn"><i data-lucide="pen-line"></i> Nouveau message</button>
+                </header>
+                <div class="email-layout animate-item">
+                    <div class="email-list" id="email-list"></div>
+                </div>
+            </section>
+
+            <!-- PROFIL -->
+            <section id="tab-profile" class="tab-pane hidden">
+                <header class="page-header animate-item">
+                    <h2>Mon Profil</h2>
+                </header>
+                <div class="profile-layout animate-item">
+                    <div class="card profile-card-info">
+                        <div class="big-avatar" id="profile-avatar">AD</div>
+                        <h3 id="profile-name">Alexandre Dupont</h3>
+                        <p class="mono-text" id="profile-class">Terminale 1</p>
+                        <p class="school-text"><i data-lucide="building"></i> Lycée Molière</p>
+                    </div>
+                    <div class="card profile-docs">
+                        <h3>Documents administratifs</h3>
+                        <ul id="documents-list" class="docs-list"></ul>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modale Détails Cours -->
+    <div id="class-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop">
+            <button class="close-modal"><i data-lucide="x"></i></button>
+            <div class="modal-header">
+                <h3 id="modal-subject" class="accent-gradient">Matière</h3>
+                <p id="modal-time" class="mono-text">08:00 - 10:00</p>
+            </div>
+            <div class="modal-body">
+                <p><i data-lucide="map-pin"></i> Salle : <span id="modal-room"></span></p>
+                <p><i data-lucide="user"></i> Professeur : <span id="modal-teacher"></span></p>
+                <hr style="border-color:var(--border-color); margin:15px 0;">
+                <h4>Contenu du cours</h4>
+                <p id="modal-description" class="desc-text" style="margin-top:5px; color:var(--text-secondary);"></p>
+                
+                <div id="modal-attachments" class="attachments-section hidden" style="margin-top:15px;">
+                    <h4>Fichiers joints</h4>
+                    <ul id="modal-files" class="docs-list" style="margin-top:5px;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Aide connexion -->
+    <div id="login-help-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop login-help-modal">
+            <button class="close-modal" id="close-login-help" type="button" aria-label="Fermer"><i data-lucide="x"></i></button>
+            <div class="help-icon"><i data-lucide="life-buoy"></i></div>
+            <h3>Êtes-vous bloqué à la connexion ?</h3>
+            <p class="help-intro">Réponds à ces petites questions pour trouver rapidement ce qui bloque.</p>
+            <div class="help-question-list">
+                <button type="button" class="help-question" data-answer="Vérifie que ton identifiant est exactement celui fourni par ton établissement, sans espace au début ou à la fin.">
+                    <span>①</span><strong>Mon identifiant est-il correct ?</strong><i data-lucide="chevron-right"></i>
+                </button>
+                <button type="button" class="help-question" data-answer="Clique sur l’œil à droite du mot de passe et vérifie chaque caractère. Attention aussi à la touche Verr. Maj.">
+                    <span>②</span><strong>Mon mot de passe est-il bien saisi ?</strong><i data-lucide="chevron-right"></i>
+                </button>
+                <button type="button" class="help-question" data-answer="Si un message rouge apparaît, lis-le entièrement : il peut indiquer un problème d’identifiants, de serveur ou de connexion au service scolaire.">
+                    <span>③</span><strong>Quel message d’erreur apparaît ?</strong><i data-lucide="chevron-right"></i>
+                </button>
+                <button type="button" class="help-question" data-answer="Teste une actualisation de la page puis, si besoin, ferme et relance le navigateur. Une connexion Internet stable est nécessaire.">
+                    <span>④</span><strong>La page répond-elle correctement ?</strong><i data-lucide="chevron-right"></i>
+                </button>
+                <button type="button" class="help-question" data-answer="Si tes identifiants sont sûrs mais que la connexion échoue toujours, contacte l’établissement ou l’administrateur de la plateforme avec le message d’erreur exact.">
+                    <span>⑤</span><strong>Tout semble correct mais ça ne marche pas ?</strong><i data-lucide="chevron-right"></i>
+                </button>
+            </div>
+            <div id="help-answer" class="help-answer" aria-live="polite">Choisis une question ci-dessus.</div>
+        </div>
+    </div>
+
+    <!-- Bouton de contact Buggy Sport -->
+    <a class="buggy-contact" href="mailto:philippe.alopo@gmail.com?subject=Contact%20Buggy%20Sport" aria-label="Contacter Buggy Sport">
+        <span class="buggy-contact-icon"><i data-lucide="message-circle"></i></span>
+        <span class="buggy-contact-text">
+            <strong>Buggy Sport</strong>
+            <small>philippe.alopo@gmail.com</small>
+        </span>
+    </a>
+
+    <!-- Modale Nouveau Message -->
+    <div id="email-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop">
+            <button class="close-modal"><i data-lucide="x"></i></button>
+            <h3>Nouveau message</h3>
+            <form id="send-email-form" style="margin-top:15px; display:flex; flex-direction:column; gap:12px;">
+                <input type="email" id="email-to" placeholder="Adresse e-mail du destinataire" required class="modal-input">
+                <input type="text" id="email-subject" placeholder="Objet" required class="modal-input">
+                <textarea id="email-body" placeholder="Votre message..." rows="5" required class="modal-input" style="resize:none;"></textarea>
+                <p id="email-status" class="email-status" aria-live="polite"></p>
+                <button type="submit" class="btn-primary">Envoyer via SMTP</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale Lecture Message -->
+    <div id="read-email-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop">
+            <button class="close-modal"><i data-lucide="x"></i></button>
+            <h3 id="read-email-subject">Objet du message</h3>
+            <p id="read-email-sender" style="color:var(--accent-green); margin:8px 0; font-weight:600;"></p>
+            <hr style="border-color:var(--border-color); margin:15px 0;">
+            <p id="read-email-body" style="color:var(--text-secondary); line-height:1.6;"></p>
+        </div>
+    </div>
+
+    <!-- Modale Restauration Widget -->
+    <div id="widget-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop">
+            <button class="close-modal"><i data-lucide="x"></i></button>
+            <h3>Ajouter / Restaurer un widget</h3>
+            <div id="hidden-widgets-list" class="hidden-widgets-grid" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+    </div>
+
+    <!-- Modale Tutoriel / Onboarding (Première connexion) -->
+    <div id="onboarding-modal" class="modal-overlay hidden">
+        <div class="modal-content animate-pop onboarding-box">
+            <button class="close-modal" id="close-tour-btn"><i data-lucide="x"></i></button>
+            <div class="tour-header">
+                <span class="tag" id="tour-step-indicator">Étape 1 sur 6</span>
+                <h3 id="tour-title" class="accent-gradient" style="margin-top:8px;">Bienvenue sur Pronote+ !</h3>
+            </div>
+            <div class="tour-body" style="margin:20px 0;">
+                <p id="tour-text" style="color:var(--text-secondary); line-height:1.6; font-size:1.05rem;"></p>
+            </div>
+            <div class="tour-footer flex-between">
+                <button id="tour-prev-btn" class="btn-secondary" style="width:auto; padding:8px 15px;">Précédent</button>
+                <div style="display:flex; gap:10px;">
+                    <button id="tour-skip-btn" class="btn-secondary" style="width:auto; padding:8px 15px; background:transparent; border:none;">Passer</button>
+                    <button id="tour-next-btn" class="btn-primary" style="width:auto; padding:8px 20px;">Suivant</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
