@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
+    initLoginLoading();
     initLogin();
 
     // Si une session valide existe déjà (rafraîchissement de page), on saute l'écran de connexion
@@ -13,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             state.grades = construireGrades(data.notes);
             state.emails = data.emails;
             state.documents = data.documents;
-            state.drive = data.drive || [];
             state.drive = data.drive || [];
 
             document.getElementById('login-page').classList.add('hidden');
@@ -37,11 +37,67 @@ const state = {
 };
 
 async function apiRequest(path, options = {}) {
-    const res = await fetch(path, {
-        headers: { "Content-Type": "application/json" },
+    const response = await fetch(path, {
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
         ...options,
     });
-    return res.json();
+
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json")
+        ? await response.json()
+        : { error: await response.text() };
+
+    if (!response.ok && !payload.error_code) {
+        payload.error = payload.error || `Erreur serveur (${response.status})`;
+    }
+    return payload;
+}
+
+const loginLoading = {
+    overlay: null,
+    title: null,
+    text: null,
+    progress: null,
+    timer: null,
+};
+
+function initLoginLoading() {
+    loginLoading.overlay = document.getElementById('login-loading');
+    loginLoading.title = document.getElementById('login-loading-title');
+    loginLoading.text = document.getElementById('login-loading-text');
+    loginLoading.progress = document.getElementById('login-loading-progress');
+}
+
+function showLoginLoading(step = 1, title = 'Connexion en cours', text = 'Vérification de tes informations…') {
+    if (!loginLoading.overlay) initLoginLoading();
+    if (!loginLoading.overlay) return;
+    loginLoading.overlay.classList.remove('hidden');
+    loginLoading.overlay.classList.add('is-visible');
+    loginLoading.overlay.setAttribute('aria-busy', 'true');
+    loginLoading.title.textContent = title;
+    loginLoading.text.textContent = text;
+    loginLoading.progress.style.width = `${Math.min(94, 18 + step * 28)}%`;
+    document.querySelectorAll('.loading-step').forEach((el, index) => {
+        el.classList.toggle('active', index < step);
+    });
+    clearInterval(loginLoading.timer);
+    let pulse = 0;
+    loginLoading.timer = setInterval(() => {
+        pulse = (pulse + 1) % 3;
+        const dots = '.'.repeat(pulse + 1);
+        loginLoading.text.textContent = text.replace(/…|\.+$/, '') + dots;
+    }, 500);
+}
+
+function hideLoginLoading() {
+    if (!loginLoading.overlay) return;
+    clearInterval(loginLoading.timer);
+    loginLoading.overlay.setAttribute('aria-busy', 'false');
+    loginLoading.progress.style.width = '100%';
+    setTimeout(() => {
+        loginLoading.overlay.classList.remove('is-visible');
+        setTimeout(() => loginLoading.overlay.classList.add('hidden'), 260);
+    }, 180);
 }
 
 function initialesDe(nom) {
@@ -73,6 +129,7 @@ function construireGrades(notes) {
 
 // Connexion & Bouton voir le mot de passe
 function initLogin() {
+    initLoginLoading();
     const form = document.getElementById('login-form');
     const passwordInput = document.getElementById('password-input');
     const togglePasswordBtn = document.getElementById('toggle-password');
@@ -99,8 +156,11 @@ function initLogin() {
             form.appendChild(errorEl);
         }
         errorEl.textContent = '';
+        errorEl.classList.remove('login-error-support');
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Connexion...';
+        submitBtn.classList.add('is-loading');
+        submitBtn.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> Connexion…';
+        showLoginLoading(1, 'Connexion en cours', 'Vérification de tes informations…');
 
         try {
             const loginRes = await apiRequest('/api/login', {
@@ -123,11 +183,14 @@ function initLogin() {
                     errorEl.textContent = loginRes.error || "Connexion échouée.";
                 }
 
+                hideLoginLoading();
                 submitBtn.disabled = false;
+                submitBtn.classList.remove('is-loading');
                 submitBtn.textContent = 'Se connecter';
                 return;
             }
 
+            showLoginLoading(2, 'Récupération des données', 'Chargement de ton emploi du temps, de tes devoirs et de tes notes…');
             const data = await apiRequest('/api/data');
             state.user = data.user;
             state.courses = data.courses;
@@ -136,14 +199,18 @@ function initLogin() {
             state.emails = data.emails;
             state.documents = data.documents;
 
+            showLoginLoading(3, 'Presque prêt…', 'Mise en place de ton espace personnel…');
             const loginPage = document.getElementById('login-page');
-            loginPage.style.animation = 'fadeSlideUp 0.4s reverse forwards';
+            loginPage.style.animation = 'fadeSlideUp 0.35s reverse forwards';
 
             setTimeout(() => {
                 loginPage.classList.add('hidden');
                 const app = document.getElementById('app-container');
                 app.classList.remove('hidden');
                 initializeApp();
+                hideLoginLoading();
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('is-loading');
 
                 // Vérifier si c'est la première connexion pour lancer le tutoriel
                 if (!localStorage.getItem('pronote_onboarding_done')) {
@@ -151,11 +218,40 @@ function initLogin() {
                 }
             }, 400);
         } catch (err) {
-            errorEl.textContent = "Impossible de contacter le serveur.";
+            hideLoginLoading();
+            errorEl.textContent = "Impossible de contacter le serveur. Vérifie ta connexion et réessaie.";
             submitBtn.disabled = false;
+            submitBtn.classList.remove('is-loading');
             submitBtn.textContent = 'Se connecter';
         }
     });
+
+    const helpBtn = document.getElementById('login-help-btn');
+    const helpModal = document.getElementById('login-help-modal');
+    const helpAnswer = document.getElementById('help-answer');
+    const closeHelpBtn = document.getElementById('close-login-help');
+    if (helpBtn && helpModal && helpAnswer) {
+        const closeHelp = () => {
+            helpModal.classList.remove('is-visible');
+            setTimeout(() => helpModal.classList.add('hidden'), 180);
+        };
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            requestAnimationFrame(() => helpModal.classList.add('is-visible'));
+            lucide.createIcons();
+        });
+        closeHelpBtn?.addEventListener('click', closeHelp);
+        helpModal.addEventListener('click', (event) => {
+            if (event.target === helpModal) closeHelp();
+        });
+        document.querySelectorAll('.help-question').forEach(question => {
+            question.addEventListener('click', () => {
+                document.querySelectorAll('.help-question').forEach(q => q.classList.remove('selected'));
+                question.classList.add('selected');
+                helpAnswer.textContent = question.dataset.answer || '';
+            });
+        });
+    }
 }
 
 function initializeApp() {
