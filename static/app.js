@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    loadPersonalization();
     lucide.createIcons();
     initLoginLoading();
     initLogin();
+    initSupportModal();
+    initPersonalizationControls();
 
     // Si une session valide existe déjà (rafraîchissement de page), on saute l'écran de connexion
     try {
@@ -74,6 +77,12 @@ function showLoginLoading(step = 1, title = 'Connexion en cours', text = 'Vérif
     loginLoading.overlay.classList.remove('hidden');
     loginLoading.overlay.classList.add('is-visible');
     loginLoading.overlay.setAttribute('aria-busy', 'true');
+    const connectionSvg = document.getElementById('connection-logo-svg');
+    if (connectionSvg) {
+        connectionSvg.classList.remove('animated');
+        void connectionSvg.offsetWidth;
+        connectionSvg.classList.add('animated');
+    }
     loginLoading.title.textContent = title;
     loginLoading.text.textContent = text;
     loginLoading.progress.style.width = `${Math.min(94, 18 + step * 28)}%`;
@@ -99,6 +108,32 @@ function hideLoginLoading() {
         setTimeout(() => loginLoading.overlay.classList.add('hidden'), 260);
     }, 180);
 }
+
+
+
+// ====== PERSONNALISATION (chargée depuis les préférences existantes, sans assistant de premier démarrage) ======
+function loadPersonalization() {
+    // V11: on nettoie une ancienne palette jaune/bleue pour repartir sur l'identité verte.
+    if (localStorage.getItem('pronote_palette_version') !== '11') {
+        localStorage.setItem('pronote_accent', 'green');
+        localStorage.setItem('pronote_palette_version', '11');
+    }
+    const accent = localStorage.getItem('pronote_accent') || 'green';
+    const size = localStorage.getItem('pronote_font_size') || 'normal';
+    const colors = {
+        green: ['#4ade80', '#22c55e'],
+        blue: ['#60A5FA', '#38BDF8'],
+        yellow: ['#FACC15', '#F59E0B'],
+        pink: ['#F472B6', '#FB7185']
+    };
+    const sizes = { small: '14px', normal: '16px', large: '17.5px', xl: '19px' };
+    const [a,b] = colors[accent] || colors.green;
+    document.documentElement.style.setProperty('--accent-green', a);
+    document.documentElement.style.setProperty('--accent-yellow', b);
+    document.documentElement.style.setProperty('--accent-gradient', `linear-gradient(135deg, ${a} 0%, ${b} 100%)`);
+    document.documentElement.style.setProperty('--ui-font-size', sizes[size] || sizes.normal);
+}
+function initPersonalizationControls() { /* personnalisation complète retirée du premier démarrage */ }
 
 function initialesDe(nom) {
     return (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(m => m[0].toUpperCase()).join("");
@@ -252,6 +287,35 @@ function initLogin() {
             });
         });
     }
+}
+
+
+function initSupportModal() {
+    const openBtn = document.getElementById('support-btn');
+    const modal = document.getElementById('support-modal');
+    const closeBtn = document.getElementById('close-support');
+    if (!openBtn || !modal) return;
+
+    const open = () => {
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => modal.classList.add('is-visible'));
+        modal.setAttribute('aria-hidden', 'false');
+        lucide.createIcons();
+    };
+    const close = () => {
+        modal.classList.remove('is-visible');
+        modal.setAttribute('aria-hidden', 'true');
+        setTimeout(() => modal.classList.add('hidden'), 180);
+    };
+
+    openBtn.addEventListener('click', open);
+    closeBtn?.addEventListener('click', close);
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) close();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.classList.contains('is-visible')) close();
+    });
 }
 
 function initializeApp() {
@@ -656,13 +720,46 @@ function openCourseModal(c) {
     document.getElementById('class-modal').classList.remove('hidden');
 }
 
-// ====== DEVOIRS PAR JOUR (vraie date) & CONFETTI AU NIVEAU DE LA COCHE ======
+// ====== DEVOIRS PAR JOUR — progression + filtres + confetti ======
+let homeworkFilter = 'all';
+
+function updateHomeworkOverview() {
+    const total = state.homework.length;
+    const done = state.homework.filter(h => h.done).length;
+    const todo = Math.max(0, total - done);
+    const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    document.getElementById('homework-total')?.replaceChildren(document.createTextNode(String(total)));
+    document.getElementById('homework-done')?.replaceChildren(document.createTextNode(String(done)));
+    document.getElementById('homework-todo')?.replaceChildren(document.createTextNode(String(todo)));
+    document.getElementById('homework-progress-text')?.replaceChildren(document.createTextNode(`${progress}%`));
+    document.getElementById('homework-progress-pill')?.replaceChildren(document.createTextNode(`${progress}% terminé`));
+    const bar = document.getElementById('homework-progress-bar');
+    if (bar) bar.style.width = `${progress}%`;
+}
+
+function setHomeworkFilter(filter) {
+    homeworkFilter = filter;
+    document.querySelectorAll('.homework-filter').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.homeworkFilter === filter);
+    });
+    loadHomework();
+}
+
 function loadHomework() {
     const container = document.getElementById('all-homework-list');
+    if (!container) return;
+    updateHomeworkOverview();
     container.innerHTML = '';
 
+    const filtered = state.homework.filter(h => {
+        if (homeworkFilter === 'todo') return !h.done;
+        if (homeworkFilter === 'done') return !!h.done;
+        return true;
+    });
+
     const parDate = {};
-    state.homework
+    filtered
         .slice()
         .sort((a, b) => new Date(a.date) - new Date(b.date))
         .forEach(h => {
@@ -670,34 +767,63 @@ function loadHomework() {
             parDate[h.date].push(h);
         });
 
-    const dates = Object.keys(parDate);
-    if (dates.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-secondary);">Aucun devoir à venir. 🎉</p>';
+    if (filtered.length === 0) {
+        const message = homeworkFilter === 'done'
+            ? 'Aucun devoir terminé pour le moment.'
+            : homeworkFilter === 'todo'
+                ? '🎉 Tous tes devoirs sont terminés !'
+                : 'Aucun devoir à venir. 🎉';
+        container.innerHTML = `
+            <div class="homework-empty-state">
+                <div class="homework-empty-icon"><i data-lucide="sparkles"></i></div>
+                <strong>${message}</strong>
+                <span>${homeworkFilter === 'done' ? 'Valide un devoir pour le faire apparaître ici.' : 'Ton espace de travail est à jour.'}</span>
+            </div>`;
+        lucide.createIcons();
         return;
     }
 
-    dates.forEach(dateStr => {
+    Object.keys(parDate).forEach(dateStr => {
         const label = new Date(dateStr).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const isToday = new Date(dateStr).toDateString() === new Date().toDateString();
         let groupHtml = `
             <div class="hw-day-group">
-                <h3 class="hw-day-title">${label.charAt(0).toUpperCase() + label.slice(1)}</h3>
+                <div class="hw-day-heading">
+                    <div>
+                        <h3 class="hw-day-title">${label.charAt(0).toUpperCase() + label.slice(1)}</h3>
+                        ${isToday ? '<span class="hw-today-tag">Aujourd’hui</span>' : ''}
+                    </div>
+                    <span class="hw-day-count">${parDate[dateStr].length} devoir${parDate[dateStr].length > 1 ? 's' : ''}</span>
+                </div>
         `;
         parDate[dateStr].forEach(h => {
             groupHtml += `
-                <div class="hw-item">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <input type="checkbox" id="hw-check-${h.id}" ${h.done ? 'checked' : ''} onchange="toggleHomework(event, '${h.id}')">
-                        <label for="hw-check-${h.id}" class="${h.done ? 'hw-done' : ''}" style="cursor:pointer;">
-                            <strong>${h.subject}</strong> : ${h.description}
+                <div class="hw-item ${h.done ? 'hw-item-done' : ''}">
+                    <div class="hw-item-main">
+                        <label class="hw-check-wrap" aria-label="${h.done ? 'Marquer comme non terminé' : 'Marquer comme terminé'}">
+                            <input type="checkbox" id="hw-check-${h.id}" ${h.done ? 'checked' : ''} onchange="toggleHomework(event, '${h.id}')">
+                            <span class="hw-check-custom"><i data-lucide="check"></i></span>
+                        </label>
+                        <label for="hw-check-${h.id}" class="hw-item-label ${h.done ? 'hw-done' : ''}">
+                            <strong>${h.subject}</strong>
+                            <span>${h.description}</span>
                         </label>
                     </div>
+                    <span class="hw-state ${h.done ? 'done' : 'todo'}">${h.done ? 'Terminé' : 'À faire'}</span>
                 </div>
             `;
         });
         groupHtml += `</div>`;
         container.innerHTML += groupHtml;
     });
+    lucide.createIcons();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.homework-filter').forEach(btn => {
+        btn.addEventListener('click', () => setHomeworkFilter(btn.dataset.homeworkFilter));
+    });
+});
 
 window.toggleHomework = function(event, id) {
     const item = state.homework.find(h => h.id === id);
@@ -1051,30 +1177,12 @@ function loadProfile() {
 
 // ====== TUTORIEL / ONBOARDING (Première connexion) ======
 const tourSteps = [
-    {
-        title: "Bienvenue sur Pronote+ !",
-        text: "Ce tutoriel rapide en quelques étapes va vous présenter les fonctionnalités essentielles pour bien démarrer et profiter pleinement de votre nouvel espace scolaire."
-    },
-    {
-        title: "Le Tableau de Bord & Widgets",
-        text: "Votre accueil est entièrement personnalisable. Cliquez sur 'Personnaliser' pour déplacer vos widgets, changer leur taille (normal, grand, ou petit) ou en masquer selon vos préférences."
-    },
-    {
-        title: "Emploi du temps interactif",
-        text: "Consultez vos cours de la semaine. En cliquant sur un cours, vous accédez directement aux détails de la séance, aux salles, professeurs et aux documents joints."
-    },
-    {
-        title: "Devoirs & Suivi des tâches",
-        text: "Cochez vos devoirs faits au fur et à mesure. Un effet visuel sympathique s'affiche pour valider votre progression et vous motiver !"
-    },
-    {
-        title: "Notes & Simulateur",
-        text: "Retrouvez vos moyennes par matière et utilisez le simulateur intégré pour tester l'impact d'une future note sur votre moyenne générale."
-    },
-    {
-        title: "Drive & Messagerie",
-        text: "Retrouvez tous vos documents administratifs et fichiers de cours triés par matière dans le Drive, et communiquez facilement avec vos professeurs via la messagerie."
-    }
+    { title: "Bienvenue sur Pronote+ !", text: "Quelques étapes pour découvrir ton espace scolaire." },
+    { title: "Le tableau de bord", text: "Ton accueil est personnalisable : déplace les widgets, change leur taille ou masque ceux dont tu n’as pas besoin." },
+    { title: "Emploi du temps", text: "Consulte tes cours et ouvre une séance pour retrouver la salle, le professeur, le contenu et les fichiers joints." },
+    { title: "Devoirs", text: "Coche tes travaux au fur et à mesure. La page des devoirs affiche ta progression et sépare facilement les tâches à faire des tâches terminées." },
+    { title: "Notes", text: "Retrouve tes notes par matière et utilise le simulateur pour voir l’effet d’une future note sur ta moyenne." },
+    { title: "Drive & Messagerie", text: "Retrouve tes documents et tes fichiers de cours dans le Drive, puis consulte ou envoie des messages depuis la messagerie." }
 ];
 
 let currentTourStep = 0;
@@ -1090,6 +1198,7 @@ function renderTourStep() {
     document.getElementById('tour-step-indicator').textContent = `Étape ${currentTourStep + 1} sur ${tourSteps.length}`;
     document.getElementById('tour-title').textContent = step.title;
     document.getElementById('tour-text').textContent = step.text;
+    lucide.createIcons();
 
     const prevBtn = document.getElementById('tour-prev-btn');
     const nextBtn = document.getElementById('tour-next-btn');
