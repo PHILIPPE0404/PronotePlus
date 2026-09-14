@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
     <script>
@@ -20,8 +20,9 @@
     <div id="login-page">
         <div class="login-shell">
             <div class="login-card animate-pop">
-                <div class="login-brand-mark"><i data-lucide="graduation-cap"></i></div>
-                <h1 class="logo-text">Pronote<span class="accent-gradient">+</span></h1>
+                <div class="login-static-logo" aria-label="Pronote+">
+                    <span class="login-static-word">Pronote</span><span class="login-static-plus">+</span>
+                </div>
                 <p class="subtitle">Espace sécurisé élève</p>
                 <form id="login-form">
                     <div class="input-group">
@@ -45,12 +46,36 @@
         </div>
     </div>
 
-    <!-- Overlay de chargement pendant la connexion -->
+    <!-- Animation de chargement uniquement pendant la connexion -->
     <div id="login-loading" class="login-loading hidden" aria-live="polite" aria-busy="false">
-        <div class="login-loading-card">
-            <div class="login-orbit" aria-hidden="true">
-                <span></span><span></span><span></span>
-                <div class="login-orbit-center"><i data-lucide="graduation-cap"></i></div>
+        <div class="connection-animation-card">
+            <div class="connection-logo-wrap">
+                <svg id="connection-logo-svg" class="connection-logo-svg" viewBox="0 0 520 100" xmlns="http://www.w3.org/2000/svg" aria-label="Animation Pronote+">
+                    <defs>
+                        <clipPath id="connection-text-clip">
+                            <rect x="75" y="0" width="445" height="100" />
+                        </clipPath>
+                        <linearGradient id="connection-green-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#4ade80" />
+                            <stop offset="100%" stop-color="#a3e635" />
+                        </linearGradient>
+                    </defs>
+                    <g clip-path="url(#connection-text-clip)">
+                        <g class="connection-text-pronote">
+                            <text x="95" y="70" font-family="Montserrat, sans-serif" font-weight="800" font-size="68" fill="#ffffff" letter-spacing="-1">Pronote</text>
+                        </g>
+                    </g>
+                    <g class="connection-plus-symbol">
+                        <rect x="429" y="24" width="12" height="48" rx="3" fill="url(#connection-green-gradient)" />
+                        <rect x="411" y="42" width="48" height="12" rx="3" fill="url(#connection-green-gradient)" />
+                    </g>
+                    <g class="connection-cap-icon">
+                        <path d="M 40 28 L 70 42 L 40 56 L 10 42 Z" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M 23 48.5 V 58 C 23 66, 57 66, 57 58 V 48.5" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M 64 45 V 62" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+                        <circle cx="64" cy="63" r="2.5" fill="#ffffff" />
+                    </g>
+                </svg>
             </div>
             <div class="login-loading-copy">
                 <span class="loading-eyebrow">Pronote+</span>
@@ -211,9 +236,42 @@
 
             <!-- DEVOIRS -->
             <section id="tab-homework" class="tab-pane hidden">
-                <header class="page-header animate-item">
-                    <h2>Travail à faire</h2>
+                <header class="page-header flex-between animate-item homework-page-header">
+                    <div>
+                        <h2>Travail à faire</h2>
+                        <p class="page-subtitle">Gère rapidement ce qu’il te reste à faire.</p>
+                    </div>
+                    <div class="homework-progress-pill" id="homework-progress-pill">0%</div>
                 </header>
+
+                <div class="homework-overview animate-item">
+                    <div class="homework-stat">
+                        <span class="homework-stat-icon"><i data-lucide="list-checks"></i></span>
+                        <div><strong id="homework-total">0</strong><span>Total</span></div>
+                    </div>
+                    <div class="homework-stat">
+                        <span class="homework-stat-icon homework-stat-green"><i data-lucide="circle-check"></i></span>
+                        <div><strong id="homework-done">0</strong><span>Terminés</span></div>
+                    </div>
+                    <div class="homework-stat">
+                        <span class="homework-stat-icon homework-stat-orange"><i data-lucide="clock-3"></i></span>
+                        <div><strong id="homework-todo">0</strong><span>À faire</span></div>
+                    </div>
+                    <div class="homework-progress-card">
+                        <div class="homework-progress-head"><span>Progression</span><strong id="homework-progress-text">0%</strong></div>
+                        <div class="homework-progress-track"><span id="homework-progress-bar"></span></div>
+                    </div>
+                </div>
+
+                <div class="homework-toolbar animate-item">
+                    <div class="homework-filters" role="tablist" aria-label="Filtrer les devoirs">
+                        <button class="homework-filter active" data-homework-filter="all" type="button">Tous</button>
+                        <button class="homework-filter" data-homework-filter="todo" type="button">À faire</button>
+                        <button class="homework-filter" data-homework-filter="done" type="button">Terminés</button>
+                    </div>
+                    <div class="homework-hint"><i data-lucide="sparkles"></i> Clique sur une coche pour valider.</div>
+                </div>
+
                 <div class="homework-container animate-item" id="all-homework-list"></div>
             </section>
 
@@ -347,14 +405,59 @@
         </div>
     </div>
 
-    <!-- Bouton de contact Buggy Sport -->
-    <a class="buggy-contact" href="mailto:philippe.alopo@gmail.com?subject=Contact%20Buggy%20Sport" aria-label="Contacter Buggy Sport">
-        <span class="buggy-contact-icon"><i data-lucide="message-circle"></i></span>
+    <!-- Support / informations -->
+    <button class="buggy-contact" id="support-btn" type="button" aria-label="Ouvrir le support et les crédits">
+        <span class="buggy-contact-icon"><i data-lucide="message-circle-more"></i></span>
         <span class="buggy-contact-text">
             <strong>Buggy Sport</strong>
-            <small>philippe.alopo@gmail.com</small>
+            <small>Support & crédits</small>
         </span>
-    </a>
+    </button>
+
+    <!-- Modale Support -->
+    <div id="support-modal" class="modal-overlay hidden" aria-hidden="true">
+        <div class="modal-content animate-pop support-modal">
+            <button class="close-modal" id="close-support" type="button" aria-label="Fermer">
+                <i data-lucide="x"></i>
+            </button>
+            <div class="support-hero">
+                <div class="support-hero-icon"><i data-lucide="life-buoy"></i></div>
+                <div>
+                    <span class="support-eyebrow">PRONOTE+</span>
+                    <h3>Support & informations</h3>
+                    <p>Tout ce qu’il faut savoir sur le projet, son hébergement et les personnes qui y participent.</p>
+                </div>
+            </div>
+
+            <div class="support-grid">
+                <article class="support-card">
+                    <div class="support-card-icon"><i data-lucide="cloud"></i></div>
+                    <div>
+                        <strong>Hébergement</strong>
+                        <p>Pronote+ est actuellement déployé sur <b>Render</b>. Après chaque mise à jour du dépôt GitHub, le service peut être redéployé automatiquement.</p>
+                        <a href="https://render.com" target="_blank" rel="noopener">Découvrir Render <i data-lucide="external-link"></i></a>
+                    </div>
+                </article>
+                <article class="support-card">
+                    <div class="support-card-icon"><i data-lucide="mail"></i></div>
+                    <div>
+                        <strong>Nous contacter</strong>
+                        <p>Pour un bug, une suggestion ou une question à propos de Pronote+ :</p>
+                        <a href="mailto:philippe.alopo@gmail.com?subject=Pronote%2B%20-%20Support">philippe.alopo@gmail.com</a>
+                    </div>
+                </article>
+            </div>
+
+            <div class="credits-block">
+                <div class="credits-title"><i data-lucide="badge-check"></i> Crédits</div>
+                <div class="credits-row"><span>Conception & développement</span><strong>Philippe ALOPO</strong></div>
+                <div class="credits-row"><span>Aide au code, interface & debug</span><strong>Assistant IA — OpenAI</strong></div>
+                <div class="credits-row"><span>Technologies</span><strong>Python · Flask · JavaScript · CSS</strong></div>
+            </div>
+
+            <div class="support-footer-note">Projet scolaire personnel · non commercial</div>
+        </div>
+    </div>
 
     <!-- Modale Nouveau Message -->
     <div id="email-modal" class="modal-overlay hidden">
@@ -412,6 +515,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=11"></script>
 </body>
 </html>
